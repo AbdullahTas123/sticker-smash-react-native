@@ -17,6 +17,13 @@ import EmojiPicker from './components/EmojiPicker';
 import EmojiList from './components/EmojiList';
 import EmojiSticker from './components/EmojiSticker';
 
+// waiting time of splash screen
+// import * as SplashScreen from 'expo-splash-screen';
+
+// SplashScreen.preventAutoHideAsync();
+// setTimeout(SplashScreen.hideAsync, 5000);
+
+
 
 const PlaceHolderImage = require("./assets/images/background-image.png");
 
@@ -130,7 +137,7 @@ export default function App() {
         />}
       />
 
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </GestureHandlerRootView>
   );
 }
