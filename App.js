@@ -1,5 +1,13 @@
+import { useState, useRef } from 'react';
+import { StyleSheet, View, Platform } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
+
+import domtoimage from 'dom-to-image';
+
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Image } from 'react-native';
+import * as ImagePicker from "expo-image-picker";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as MediaLibrary from 'expo-media-library';
 
 import ImageViewer from './components/ImageViewer';
 import Button from './components/Button';
@@ -7,19 +15,24 @@ import CircleButton from './components/CircleButton';
 import IconButton from './components/IconButton';
 import EmojiPicker from './components/EmojiPicker';
 import EmojiList from './components/EmojiList';
-
-import * as ImagePicker from "expo-image-picker";
-
-import { useState } from 'react';
+import EmojiSticker from './components/EmojiSticker';
 
 
 const PlaceHolderImage = require("./assets/images/background-image.png");
 
 export default function App() {
-  const [pickedEmoji, setPickedEmoji] = useState(null);
-  const [isModalVisible, setIsModalVisible] = useState(true);
-  const [showAppOptions, setShowAppOptions] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showAppOptions, setShowAppOptions] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [pickedEmoji, setPickedEmoji] = useState(null);
+  const [status, requestPermission] = MediaLibrary.usePermissions();
+
+  const imageRef = useRef();
+
+  if (status === null) {
+    requestPermission();
+  }
+
   // pick an image
   const pickImageAsync = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -36,6 +49,41 @@ export default function App() {
     }
   };
 
+  const onSaveImageAsync = async () => {
+    if (Platform.OS !== "web") {
+      try {
+        const localUri = await captureRef(imageRef, {
+          height: 440,
+          quality: 1,
+        });
+  
+        await MediaLibrary.saveToLibraryAsync(localUri);
+        if (localUri) {
+          alert("Saved!");
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    } else { 
+      domtoimage
+        .toJpeg(imageRef.current, {
+            quality: 0.95,
+            width: 320,
+            height: 440,
+          })
+        .then(dataUrl => {
+          let link = document.createElement('a');
+          link.download = 'sticker-smash.jpeg';
+          link.href = dataUrl;
+          link.click();
+        })
+        .catch(e => {
+          console.log(e);
+        });
+    }
+    
+  };
+
   const onReset = () => {
     setShowAppOptions(false);
   };
@@ -48,22 +96,24 @@ export default function App() {
     setIsModalVisible(false);
   }
 
-  // const onSaveImageAsync = async () => {
-  // };
-
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       <View style={styles.imageContainer}>
-        <ImageViewer 
-          placeholderImageSource={PlaceHolderImage}
-          selectedImage={selectedImage}/>
+        <View ref={imageRef} collapsable={false}>
+          <ImageViewer 
+            placeholderImageSource={PlaceHolderImage}
+            selectedImage={selectedImage}/>
+          {pickedEmoji !== null ? (
+            <EmojiSticker imageSize={40} stickerSource={pickedEmoji}/>
+          ) : null}
+        </View>
       </View>
 
       {showAppOptions ? (
         <View style={styles.optionsContainer}>
           <View style={styles.optionsRow}>
             <IconButton icon="refresh" label="Reset" onPress={onReset}/>
-            <CircleButton />
+            <CircleButton onPress={onAddSticker}/>
             <IconButton icon="save-alt" label="Save" onPress={onSaveImageAsync}/>
           </View>
         </View>
@@ -74,12 +124,14 @@ export default function App() {
           </View>
         )}
 
-      <EmojiPicker isVisible={isModalVisible} onClose={onModalClose}>
-        <EmojiList onSelect={setPickedEmoji} onCloseModal={onModalClose}/>
-      </EmojiPicker>
+      <EmojiPicker isVisible={isModalVisible} onClose={onModalClose}
+        emojiList={
+          <EmojiList onSelect={setPickedEmoji} onCloseModal={onModalClose}
+        />}
+      />
 
       <StatusBar style="auto" />
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
